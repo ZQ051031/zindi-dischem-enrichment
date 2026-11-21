@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dischem-enrich"
+version = "0.1.0"
+description = "Offline evidence-first baseline for product enrichment"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["openpyxl>=3.1,<4"]
+
+[tool.setuptools.packages.find]
+include = ["dischem_enrich*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
