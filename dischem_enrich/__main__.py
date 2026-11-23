@@ -27,6 +27,8 @@ def main():
     runner.add_argument("--ocr-plugin", help="Trusted installed module:function taking an image path")
     runner.add_argument("--llm-endpoint", help="Local OpenAI-compatible chat completions URL only")
     runner.add_argument("--model", default="local-open-model")
+    runner.add_argument("--profile", choices=("auto", "dischem", "generic"), default="auto",
+                        help="auto selects the Dis-Chem column adapter when its input columns are present")
     evaluator = commands.add_parser("evaluate")
     evaluator.add_argument("--pred", required=True)
     evaluator.add_argument("--ref", required=True)
@@ -49,7 +51,7 @@ def main():
         if args.llm_endpoint:
             from .plugins import LocalLLM
             extractor = LocalLLM(args.llm_endpoint, args.model)
-        rows = run(args.data_dir, args.out, args.input, config, ocr, extractor)
+        rows = run(args.data_dir, args.out, args.input, config, ocr, extractor, args.profile)
         print(f"Wrote {len(rows)} products to {args.out}")
     elif args.command == "evaluate":
         schema = Schema.load(args.schema or Path(args.ref).parent / "submission_format.json")

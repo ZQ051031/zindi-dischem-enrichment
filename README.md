@@ -29,11 +29,26 @@ model downloads or GPU allocations occur in the default workflow.
    `SampleSubmission.csv`, `template_input.csv`, `template.csv`, and optionally
    `image_mapping.xlsx` plus `product_images.zip`. Read the provided
    `product_enrichment_guardrail.pdf` and `columns.docx` before adapting rules.
-2. Inspect the **actual** schema and source headers. The real ten targets are
-   `online_name`, `short_description`, `long_description` and seven structured
-   fields whose names have **not** been confirmed. Nothing in inference requires
-   the synthetic structured names. The schema controls columns/order and empty
+2. Inspect the **actual** schema and source headers. The official
+   `submission_format.json` (`required_columns` + `field_formats`) is loaded
+   directly. Its targets are `online_name`, `short_description`,
+   `long_description`, `ingredient_information`, `storage_instructions`,
+   `variant_attributes`, `product_specifications`, `weight`, `dimensions` and
+   `nutritional_information`. The schema controls columns/order and empty
    shapes; the sample must agree with its columns/order.
+
+   **Dis-Chem profile.** When the input has the official columns (`Product Name`,
+   `Short Description`, `Product Description`, `Nutritional Information`,
+   `Specifications`), `run` auto-selects the rule-only adapter in
+   `dischem_enrich/dischem.py` (`--profile dischem|generic|auto`). It reads only
+   the same record's five content cells: names and descriptions are copied
+   (whitespace normalised only), `Storage:` blocks become storage instructions,
+   explicit `Ingredients:` declarations are split, and specification/nutrition
+   values come only from unmasked HTML table rows / nutrition JSON values.
+   Masked parts of a cell are skipped individually; catalogue context
+   (`T_WEIGHT_UNIT`, `VOLUME`, ...) and `unlabelled_data.csv` are never used as
+   values; units are not converted or added. Every emitted leaf must have an
+   exact column/offset/quote citation or the run fails.
 3. Supported schema forms: a dictionary of column-to-empty values; a dictionary
    of typed specs; a list of `{name/column/field, empty_value/empty/default/type}`
    specs; or `columns`, `fields`, `submission_columns`, `output_fields` wrappers.

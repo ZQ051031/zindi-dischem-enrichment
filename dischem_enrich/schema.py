@@ -42,6 +42,12 @@ class Schema:
     @classmethod
     def load(cls, path):
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
+        if isinstance(raw, dict) and "required_columns" in raw:
+            # Official Dis-Chem contract: ordered names plus per-field formats.
+            formats = raw.get("field_formats", {})
+            if not all(isinstance(c, str) for c in raw["required_columns"]):
+                raise ValueError("required_columns must be a list of names")
+            return cls({c: _empty(formats.get(c, {"type": "string"})) for c in raw["required_columns"]})
         if isinstance(raw, dict):
             for container in ("columns", "fields", "submission_columns", "output_fields"):
                 if container in raw:

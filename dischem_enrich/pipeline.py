@@ -4,6 +4,7 @@ import csv
 import json
 from pathlib import Path
 
+from . import dischem
 from .data import Evidence, read_csv, write_csv, sources, excluded, image_mapping
 from .extraction import extract, resolve, name_candidates
 from .grounding import Candidate, validate
@@ -90,6 +91,10 @@ def write_submission(path, rows, schema, blocked=None):
 
 
 def _shape(value, shape):
+    if shape == {}:
+        # Open maps such as nutrient tables: names are data, values are atomic.
+        return isinstance(value, dict) and all(isinstance(v, (str, int, float)) and not isinstance(v, bool)
+                                               for v in value.values())
     if isinstance(shape, dict):
         return isinstance(value, dict) and value.keys() == shape.keys() and all(_shape(value[k], v) for k, v in shape.items())
     if isinstance(shape, list):
@@ -133,7 +138,7 @@ def validate_submission(path, schema, sample=None, inputs=None):
     return errors
 
 
-def run(data_dir, out, input_name="Test_Masked.csv", config=None, ocr=None, extractor=None):
+def run(data_dir, out, input_name="Test_Masked.csv", config=None, ocr=None, extractor=None, profile="auto"):
     config = config or {}
     root = Path(data_dir)
     schema = Schema.load(root / "submission_format.json")
@@ -141,9 +146,18 @@ def run(data_dir, out, input_name="Test_Masked.csv", config=None, ocr=None, extr
     identifiers = [r["record_id"] for r in inputs]
     if any(not i for i in identifiers) or len(set(identifiers)) != len(identifiers):
         raise ValueError("Input record IDs must be nonempty and unique")
+    if profile == "auto":
+        profile = "dischem" if inputs and dischem.is_dischem(inputs[0]) else "generic"
+    if profile == "dischem" and (ocr or extractor or config):
+        raise ValueError("The dischem profile is rule-only; OCR, LLM and config options need --profile generic")
     mapping = image_mapping(root / "image_mapping.xlsx", root / "product_images") if ocr else {}
     predictions, audits = [], []
     for row in inputs:
+        if profile == "dischem":
+            prediction, audit = dischem.enrich(row, schema, excluded(row))
+            predictions.append(prediction)
+            audits.append(audit)
+            continue
         prediction, audit = enrich(row, schema, config.get("source_columns"), config.get("field_aliases"),
                                    ocr, mapping.get(row["record_id"], ()), extractor)
         predictions.append(prediction)
